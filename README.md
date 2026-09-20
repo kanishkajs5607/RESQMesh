@@ -62,9 +62,13 @@ This result is reported by the project team and recorded in the [published relea
 
 ## Screenshots / Prototype Proof
 
-Real screenshots are awaiting upload; no placeholder or generated images are presented as evidence.
+| Citizen Mode | Offline Mesh Active | Multi-Device Network |
+|---|---|---|
+| ![Citizen Mode](docs/screenshots/01-citizen-mode.png) | ![Offline Mesh Active](docs/screenshots/02-mesh-active.png) | ![Multiple Connected Devices](docs/screenshots/03-multi-device-network.png) |
 
-Upload them to **`docs/screenshots/`** using the filenames and display instructions in the [screenshot guide](docs/screenshots/README.md). Prioritize the Rescuer card showing the CRITICAL SOS and **2-hop path**, followed by the physical-device photo.
+| Create SOS | Relayed SOS in Rescuer Mode | Physical Prototype |
+|---|---|---|
+| ![Create SOS](docs/screenshots/04-create-sos.png) | ![Critical SOS with 2-hop relay path](docs/screenshots/05-rescuer-mode-relayed.png) | ![Two physical phones running RESQMesh](docs/screenshots/06-physical-device-demo.png) |
 
 ## Technology / Architecture
 
