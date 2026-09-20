@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.resqmesh.core.PacketTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-09-20T04:52:56" hostname="localhost" time="0.091">
+  <properties/>
+  <testcase name="serializationRetainsEveryField" classname="org.resqmesh.core.PacketTest" time="0.083"/>
+  <testcase name="malformedPathRejected" classname="org.resqmesh.core.PacketTest" time="0.0"/>
+  <testcase name="mismatchedTtlRejected" classname="org.resqmesh.core.PacketTest" time="0.0"/>
+  <testcase name="tooManyInjuredRejected" classname="org.resqmesh.core.PacketTest" time="0.001"/>
+  <testcase name="relayKeepsOriginAndLocation" classname="org.resqmesh.core.PacketTest" time="0.001"/>
+  <testcase name="missingLocationAccepted" classname="org.resqmesh.core.PacketTest" time="0.001"/>
+  <testcase name="neverForwardBackToOrigin" classname="org.resqmesh.core.PacketTest" time="0.0"/>
+  <testcase name="invalidCoordinatesRejected" classname="org.resqmesh.core.PacketTest" time="0.0"/>
+  <testcase name="criticalFirst" classname="org.resqmesh.core.PacketTest" time="0.002"/>
+  <testcase name="wrongSenderRejected" classname="org.resqmesh.core.PacketTest" time="0.0"/>
+  <testcase name="samePriorityNewestFirst" classname="org.resqmesh.core.PacketTest" time="0.001"/>
+  <testcase name="ttlStopsAtEight" classname="org.resqmesh.core.PacketTest" time="0.001"/>
+  <testcase name="oversizedRejected" classname="org.resqmesh.core.PacketTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
