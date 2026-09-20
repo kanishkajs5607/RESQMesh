@@ -1,47 +1,34 @@
 # Verification record
 
-## Automated results
+## Three-phone physical demonstration — confirmed by the project team
 
-- Android debug compilation and APK packaging: PASS.
-- Core protocol JUnit tests: 13 passed, 0 failures/errors/skips.
-- SQLite Robolectric tests on Android API 28: 2 passed, 0 failures/errors/skips.
-- Android lint: PASS, zero errors, three warnings.
-- Android XML/workflow YAML syntax and Unix wrapper shell syntax: PASS.
-- Gradle wrapper JAR archive integrity: PASS.
+The team reports a successful offline test on **three physical Android phones**:
 
-Lint warnings: two permission flags are ignored on Android versions earlier than API 31 (expected); explicit Android 12+ backup/data-extraction rules are a production follow-up. No warnings were suppressed to obtain the result.
+- A created an SOS in Citizen Mode.
+- B received, stored and relayed the SOS.
+- C received the original SOS in Rescuer Mode, displaying a **2-hop relay path**.
+- Internet/mobile data was not required for this transfer.
 
-## Build environment and recovery
+The [v1.0.0 release](https://github.com/kanishkajs5607/RESQMesh/releases/tag/v1.0.0) also records this demonstration. Its uploaded `RESQMesh-debug.apk` is 10,508,733 bytes.
 
-Built using Java 17, Gradle 8.9, Android Gradle Plugin 8.7.3 and compile SDK 35. Tooling was installed during this task. Initial dependency downloads failed until the workspace JVM proxy was configured. Robolectric's separate downloader also needed proxy forwarding. An API-28 test cleanup helper was corrected to close SQLiteOpenHelper explicitly instead of relying on newer AutoCloseable behavior.
+This is a team-reported hardware result, not a physical test performed by the documentation agent. Exact device models, OS versions, distance, latency, battery life, airplane-mode testing and restart/reconnection test outcomes have not been supplied; no results for those are claimed.
 
-Final verification command:
+## Recorded automated verification
 
-```sh
-./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
-```
+The original build verification recorded successful debug compilation/APK packaging, **13 passing protocol tests + 2 passing SQLite tests**, and lint with **zero errors and three warnings**. The committed [protocol report](test-results/TEST-org.resqmesh.core.PacketTest.xml) and [storage report](test-results/TEST-org.resqmesh.app.PacketStoreTest.xml) each record zero failures/errors/skips.
 
-The local run used the same Gradle 8.9 distribution directly plus environment-specific proxy flags and a two-worker limit. Proxy addresses and local SDK paths are not committed or packaged.
+Coverage includes JSON serialization, A → B → C routing, immutable origin/location/time, hop/TTL limits, loop prevention, malformed inputs, priority ordering, duplicate suppression and SQLite close/reopen persistence. SQLite tests use Robolectric API 28; they are distinct from physical-phone tests.
 
-APK output: `app/build/outputs/apk/debug/app-debug.apk`.
+Lint warnings concern permission flags ignored before API 31 and explicit Android 12+ backup/data-extraction rules. No application code is changed by this submission polish; the automated suite is not rerun locally solely for documentation edits.
 
-GitHub Actions has NOT run. Automatic approval review rejected remote repository writes because of the earlier inspect-only instruction. No commits or pushes have occurred. Explicit chat approval is still needed to publish this project to the existing repository.
+## Repository, release and CI
 
-## Passing test coverage
+Source and Gradle configuration are present on main. The existing published v1.0.0 release contains the APK; no replacement release is created.
 
-- Full packet JSON round-trip (including Tamil text).
-- A → B → C routing retains origin, coordinates, creation time and message ID.
-- Hop count and TTL decrement through eight hops.
-- Path loop prevention; wrong immediate sender rejection.
-- Malformed path, inconsistent TTL, invalid coordinates, oversized payload and invalid injured count rejection.
-- Missing location allowed.
-- Priority ordering and newest-first ordering within priority.
-- SQLite duplicate suppression and receipt idempotence.
-- Packet and acknowledgement persistence after database close/reopen.
-- Persisted relay path and relay counter behavior.
+The [initial Actions run](https://github.com/kanishkajs5607/RESQMesh/actions/runs/35494212101) failed before compilation: SDK setup requested the missing legacy `tools` package. The workflow's package input is corrected to `platform-tools`; see [current Actions runs](https://github.com/kanishkajs5607/RESQMesh/actions) for the new outcome. A failed setup run is not a failed physical demonstration or proof of an application compilation defect.
 
-## Requires phones
+The submission review checks source-backed technical claims, relative documentation links, release asset metadata, common credential patterns and tracked build-file clutter. This is a basic repository review, not a comprehensive security audit.
 
-Installability; Google Play services/radio compatibility; Nearby permissions by Android version; actual A → B transfer; B → C transfer after A is paused; packet persistence after app restart; pair-code rejection; real UI layout on small screens; airplane-mode operation with radios manually re-enabled.
+## Further tests, not claimed as completed
 
-See THREE_PHONE_DEMO.md for pass/fail observations to record.
+Broader hardware/OS coverage, measured range/latency, background/screen-off behavior, battery endurance, airplane-mode operation, radio interruption recovery and large networks require their own recorded results. The [demo guide](THREE_PHONE_DEMO.md) includes additional suggested checks; their inclusion is not a claim they were performed.

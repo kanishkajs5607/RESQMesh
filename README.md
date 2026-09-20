@@ -1,184 +1,136 @@
 # RESQMesh
+### Communication when networks fail.
 
-**Communication when networks fail.**
+RESQMesh is an infrastructure-free Android emergency communication prototype. Nearby phones running the app exchange SOS messages without internet or mobile data, storing and forwarding them until they reach a rescuer.
 
-Android disaster communication prototype. Nearby phones exchange emergency SOS packets over local radios, save them, and forward them when another participating phone connects.
+> **Working three-phone prototype:** physically demonstrated **Citizen A → Relay B → Rescuer C**, with the original SOS arriving over a **2-hop relay path**.
 
-> **Verification status:** Android debug build succeeds; 15 automated tests pass (13 protocol + 2 SQLite persistence tests). Lint has zero errors and three warnings. A signed debug APK is generated. Physical three-phone networking and visual phone testing are still required. GitHub writes remain blocked by automatic approval review. See [verification status](docs/VERIFICATION.md).
+**[Download RESQMesh-debug.apk](https://github.com/kanishkajs5607/RESQMesh/releases/download/v1.0.0/RESQMesh-debug.apk)** · [v1.0.0 release](https://github.com/kanishkajs5607/RESQMesh/releases/tag/v1.0.0) · [Three-phone demo guide](docs/THREE_PHONE_DEMO.md)
 
-## Problem and why it matters
+## The Problem
 
-Disasters can interrupt mobile networks while people's phones still work. Someone trapped may need to share their location, the number of people, and injury information with rescuers. A relay phone can carry a saved SOS beyond the sender's immediate radio range as people move.
+Floods, earthquakes and building collapses can disrupt cellular towers, mobile data and internet connectivity. Victims may still have working phones but lose the ability to communicate their location, injuries and rescue needs.
 
-## Solution
+## Our Solution
 
-RESQMesh provides Citizen Mode for creating SOS messages and Rescuer Mode for reviewing them. Both modes participate in forwarding. There is no registration, backend, Supabase, Firebase, or cloud delivery path.
+RESQMesh uses local phone-to-phone communication to carry emergency information through participating devices. Citizen Mode creates SOS messages; Rescuer Mode makes received emergencies easy to review. Both modes can relay messages.
 
-**Every participating phone needs this app installed in advance.** A phone without RESQMesh does not join automatically. Rescuer Mode is a UI mode, not a verified rescue-service identity.
+**All participating phones must have RESQMesh installed. No router, cloud backend or mobile-data connection is needed for the relay.**
 
-This is application-level store-and-forward over local peer-to-peer links. It is not an operating-system mesh router and does not restore internet access. Users connect nearby nodes and compare pairing codes; queued packets then forward automatically. The MVP operates while the app is visible.
+## How RESQMesh Works
 
-## Technology choice
+**Victim phone → Nearby relay phone → Additional relay(s), if needed → Rescuer phone**
 
-| Option | MVP decision |
+1. **STORE:** Save the SOS on the sender and each receiving phone.
+2. **CARRY:** Retain the message while a phone moves or has no connected peer.
+3. **FORWARD:** When another eligible phone connects, forward the saved SOS.
+
+Users discover nearby nodes, connect and compare the pairing code on both phones. Eligible saved messages then forward automatically. Keep the app visible while connecting and relaying.
+
+## Key Features
+
+- Offline device-to-device communication and nearby-node discovery.
+- Store-and-forward SOS relaying and multi-device propagation.
+- Citizen and Rescuer modes with emergency priority handling.
+- Persistent SOS storage and duplicate-message prevention.
+- Hop-count tracking and relay-path visualization.
+- Last-known location sharing, with manual or unavailable-location options.
+
+## SOS Packet
+
+| Information | Included details |
 |---|---|
-| Nearby Connections, P2P_CLUSTER | Chosen: offline local discovery, encrypted links and multiple peers; suitable for small SOS payloads. Requires Google Play services. |
-| Raw Bluetooth/BLE | Avoided for this sprint: more work for reliable framing, pairing, fragmentation and Android radio differences. |
-| Wi-Fi Direct | Viable alternative, but group-owner lifecycle adds work to sequential relay connections. |
-| Wi-Fi Aware | Not universally available on ordinary Android hardware. |
-| Website | Insufficient for the required native phone-to-phone transport and lifecycle access. |
+| Emergency | Type, description and priority |
+| People | Number of people and number injured |
+| Location | Last-known coordinates, source and fix time when available |
+| Origin | Unique message ID, anonymous origin device ID and creation timestamp |
+| Journey | Hop count, remaining-hop TTL and relay path |
 
-No physical-device evidence is claimed for this choice. Nearby's API supports the scenario, but each team's actual phones must be tested. No fixed range or guaranteed delivery is promised.
+Original emergency information is retained while hop count and path are updated at each receiver.
 
-References: [Nearby overview](https://developers.google.com/nearby/connections/overview), [cluster strategy](https://developers.google.com/nearby/connections/strategies), [connection verification](https://developers.google.com/nearby/connections/android/manage-connections), [permissions](https://developers.google.com/nearby/connections/android/get-started), [Google Play services setup](https://developers.google.com/android/guides/setup).
+## Three-Phone Physical Demo
 
-## Architecture
+> **Successfully tested on THREE physical Android phones without internet/mobile data.**
 
-```mermaid
-flowchart TD
-    UI["Citizen / Rescuer UI"] --> Controller["MeshViewModel"]
-    Controller --> Routing["Packet validation and routing"]
-    Controller <--> DB["SQLite: packets and receipts"]
-    Controller <--> Transport["Nearby Connections"]
-    Transport <--> Peer["Nearby RESQMesh phone"]
-    GPS["Last-known coordinates"] --> UI
-```
+| Phone | Role | Demonstrated result |
+|---|---|---|
+| **A** | Citizen / victim | Created an SOS |
+| **B** | Relay | Received, stored and relayed the SOS |
+| **C** | Rescuer | Received the original SOS in Rescuer Mode, showing **2 hops** |
 
-- **Kotlin, Jetpack Compose / Material 3**: native dark emergency interface.
-- **Nearby Connections P2P_CLUSTER**: discovery, verification and bytes payloads.
-- **SQLiteOpenHelper**: durable packets and per-peer storage confirmations.
-- **Pure Kotlin core module**: JSON serialization, validation and routing rules.
-- **JUnit + Robolectric**: protocol and Android storage tests.
-- **GitHub Actions workflow**: prepared for tests, lint and APK generation.
+This result is reported by the project team and recorded in the [published release](https://github.com/kanishkajs5607/RESQMesh/releases/tag/v1.0.0). It establishes the three-phone demonstration, not a claim of certified reliability or larger-scale field testing. [Verification details](docs/VERIFICATION.md).
 
-## How offline relay works
+## Screenshots / Prototype Proof
 
-1. A creates a packet with a UUID and an anonymous persistent origin ID. A saves it locally before sharing.
-2. The user starts mesh on A and B, connects them and confirms matching codes on both.
-3. A sends one eligible packet at a time, with critical messages first.
-4. B validates the packet, increments the hop count, reduces TTL and appends its device ID.
-5. B performs a SQLite insert. The message ID is a primary key: repeated receipts cannot create duplicate cards.
-6. Only after storage completes does B send a storage acknowledgement. A persists the acknowledgement for this peer.
-7. A can go offline. B retains the packet through app restarts.
-8. When B connects to C, B forwards eligible saved packets. C stores the same SOS with hop count 2 and path A → B → C.
+Real screenshots are awaiting upload; no placeholder or generated images are presented as evidence.
 
-### Protocol
+Upload them to **`docs/screenshots/`** using the filenames and display instructions in the [screenshot guide](docs/screenshots/README.md). Prioritize the Rescuer card showing the CRITICAL SOS and **2-hop path**, followed by the physical-device photo.
 
-Packet fields: `messageId`, `originDeviceId`, `timestamp`, `latitude`, `longitude`, `priority`, `message`, `peopleCount`, `injuredCount`, `hopCount`, `ttl`, `emergencyType`, `locationSource`, `locationTimestamp`, `path`, `version`.
+## Technology / Architecture
 
-- Origin hop count is 0. TTL starts at 8 and means **remaining hops**, not time.
-- At each new receiver, hop count increases by one and TTL decreases by one. A TTL-zero packet remains visible but is not sent onward.
-- Forwarding excludes any peer already in the packet's path and peers that previously acknowledged that message.
-- First-seen packet/path wins. Alternate duplicate paths do not replace the saved record.
-- One byte identifies the frame: 1 = UTF-8 JSON packet; 2 = ASCII UUID storage acknowledgement.
-- Packet payload limit is 8192 bytes; message text is at most 280 characters.
-- Origin, creation time and coordinates stay unchanged across hops.
-- At most three unacknowledged send attempts per packet per connection; retries wait approximately 15 seconds. Reconnect to retry after exhaustion.
-- A confirmation means “saved on that peer”, not “rescuer acted” or guaranteed end-to-end delivery.
-- Critical, High, Normal ordering; newest first within a priority. An already in-flight packet is not preempted.
+| Layer | Actual implementation |
+|---|---|
+| Android app | Kotlin, Jetpack Compose and Material 3; Android 8.0+ |
+| Discovery / transport | Google Nearby Connections, `P2P_CLUSTER`, using local Bluetooth/BLE/Wi-Fi capabilities |
+| Persistent storage | SQLite through `SQLiteOpenHelper`; packets and per-peer receipts |
+| Protocol / routing | Kotlin core module; `kotlinx.serialization` JSON, validation and forwarding rules |
+| Coordination | `AndroidViewModel`, coroutines and `StateFlow` |
+| Location / identity | Android `LocationManager` cached fixes; anonymous UUID saved in `SharedPreferences` |
+| Verification | JUnit protocol tests and Robolectric SQLite tests |
 
-## Features
+`app/` contains the UI, transport and storage; `core/` contains packet/routing logic. This is application-level relaying over local links, not a replacement for internet access. Google Play services is required.
 
-- Citizen/Rescuer mode selector.
-- Fast SOS creation with emergency type, message, people, injured count and priority.
-- Optional cached device coordinates, manually entered coordinates, or an explicitly labelled demo location.
-- Readable emergency cards with original ID, time, full origin ID, hop count and relay path.
-- Actual discovered/connected node lists; no synthetic peers or fake delivery events.
-- Persistent storage, deduplication, hop protection and per-peer acknowledgements.
-- Verified pairing codes and explicit connect/disconnect controls.
-- Pause/resume with saved messages; screen kept awake while app is visible.
-- Small in-memory activity log; durable receipt counts.
+## Reliability / Routing
 
-## Requirements and permissions
+- **Unique UUIDs + SQLite primary keys** prevent duplicate inbox entries.
+- **Hop count starts at 0; TTL starts at 8.** Each hop increments the count and reduces TTL. TTL means remaining hops, not message age.
+- **Loop protection** excludes nodes already in the path and peers that acknowledged storage.
+- **Durable receipts:** acknowledgement is sent after the receiver saves the packet.
+- **Priority:** CRITICAL → HIGH → NORMAL; newest first within each priority.
+- **Bounded retries:** up to three unacknowledged attempts per packet per connection; reconnect to retry after exhaustion.
 
-- Android 8.0 / API 26 or newer.
-- Working Bluetooth/BLE and Wi-Fi radios.
-- Google Play services installed, enabled and sufficiently up to date. Prepare these before going offline.
-- All phones running the same APK.
-- Nearby Devices permissions on Android 12+; Nearby Wi-Fi on Android 13+.
-- Location permission for discovery on Android 8–12L. Location services may also need to be enabled.
-- Optional coarse/fine location permission for retrieving cached coordinates on newer Android.
-- No camera, microphone, contacts, SMS or file-storage permission.
-- No account or API key.
+A storage confirmation means a peer saved the SOS; it does not mean a rescue team has acted.
 
-Location permission refusal never blocks saving an SOS. On older Android, refusing location permission can prevent peer discovery. The current location feature reads the most recent cached fix; it does not promise a fresh GPS fix. The fix time/source appears on the received card. Blank location is allowed.
+## Installation
 
-## Build
+**[Get the existing v1.0.0 release](https://github.com/kanishkajs5607/RESQMesh/releases/tag/v1.0.0) — RESQMesh v1.0.0 – HackDay 1.0 Prototype**
 
-### Windows / Android Studio
+1. Download **RESQMesh-debug.apk** from the release.
+2. Install the same APK on each Android phone; allow installation from that source if prompted.
+3. Grant the requested **Nearby Devices / Location** permissions.
+4. Enable **Bluetooth and Wi-Fi**. Use Android 8.0+ phones with Google Play services.
+5. **Internet/mobile data is not required** for mesh communication.
+6. Open RESQMesh and tap **Start mesh** on participating phones. Tap **Connect**, compare codes and confirm on both devices.
 
-1. Install Android Studio with Android SDK Platform 35 and Build Tools 35.0.0, and use JDK 17.
-2. Extract/download this project. Open a terminal in the project root.
-3. Ensure `ANDROID_HOME` points to your Android SDK, or create a local `local.properties` containing `sdk.dir=C:/Users/YOUR_NAME/AppData/Local/Android/Sdk`. Do not commit that file.
-4. Run:
+Keep the app open while relaying. For airplane-mode testing, manually re-enable Bluetooth/Wi-Fi afterward; this is a test instruction, not a claim that airplane mode was part of the reported demo.
 
-```powershell
-.\gradlew.bat :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
-```
+Developers: [build and test instructions](docs/BUILD.md).
 
-### macOS / Linux
+## Demo Scenario
 
-```sh
-chmod +x gradlew
-./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
-```
+1. **A — Citizen:** manually create **CRITICAL / Collapse**, **4 people**, **2 injured**, message **“Trapped under building”**. Use available last-known coordinates or clearly label a manual/demo location.
+2. **B — Relay:** connect A and B; B receives and stores the SOS. Keep C paused initially.
+3. **C — Rescuer:** pause A, then connect B to C. B forwards the saved packet; C displays the original information and **A → B → C**, hop count **2**.
 
-The standard Gradle wrapper is included and pinned to Gradle 8.9, with distribution SHA-256 verification. Use JDK 17. Open the root folder directly in Android Studio. The first build needs internet for tooling and dependencies; running the app’s relay does not.
+This is the repeatable submission script; these exact message/count values are not asserted as the contents of the earlier physical test. [Detailed steps](docs/THREE_PHONE_DEMO.md).
 
-Successful APK output:
+## Privacy
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
+No registration, phone number or contacts are required. The prototype uses anonymous device identifiers and rescue-relevant information. Connected participants can read the shared SOS and coordinates. Nearby links are encrypted and pairing codes are checked, but packets are not end-to-end encrypted or cryptographically signed; Rescuer Mode does not verify a person's identity.
 
-### GitHub Actions
+## Limitations
 
-The included `.github/workflows/android.yml` is configured to build after a push to main and can also be run manually. Once uploaded and enabled, open Actions → Android build → successful run → Artifacts → RESQMesh-debug. Download/extract the ZIP; its APK is installable. The workflow also uploads test/lint reports.
+- Hackathon prototype, **not a certified emergency service** or guaranteed rescue channel.
+- Every relay phone needs RESQMesh, compatible radios, permissions and Google Play services.
+- Networking pauses when the app is hidden; background relaying is not implemented.
+- Range and discovery depend on hardware and surroundings; larger-scale operation is unverified.
+- Cached coordinates can be old or unavailable. No live-map or fresh-GPS guarantee.
+- Packets persist locally; hop TTL does not expire them by age. Local storage is not separately encrypted.
 
-**This workflow has not yet been uploaded or executed.** A green run is required before describing the source as build-verified.
+## Future Scope
 
-## Install on three phones
+Background relaying, larger-scale mesh testing, stronger authentication and encryption, battery optimization, integration with official disaster-response systems, and optional gateway synchronization when a node regains internet connectivity.
 
-Transfer the same `app-debug.apk` to A, B and C. Open it on each phone and permit installation from that source if Android asks. Alternatively, enable USB debugging and install:
+## HackDay 1.0
 
-```sh
-adb devices
-adb -s PHONE_SERIAL install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-Repeat for the three serial numbers. Do not clear app data during persistence/deduplication tests. Separate CI builds may use different debug signing keys; an update with a different key may require uninstalling the old APK (which deletes its saved messages).
-
-## Live demo and airplane mode
-
-Follow [the exact three-phone demo](docs/THREE_PHONE_DEMO.md). C must stay paused during A → B; A must stay paused during B → C. B is restarted between transfers to prove persistence. This prevents an accidental direct A → C delivery.
-
-For airplane mode, manually re-enable Bluetooth and Wi-Fi after enabling airplane mode. Keep mobile data off and avoid connecting to a router. Nearby may select the local transport supported by the devices.
-
-## Known limitations
-
-- This is a hackathon prototype awaiting physical-device validation, not an emergency-service replacement.
-- App must remain visible during discovery/relay. Moving it to the background pauses the mesh; tap Start mesh after returning. Screen-off/background continuous operation is not implemented.
-- Users connect and verify peers. Discovery is automatic once started; unattended first-time pairing is not.
-- No Google Play services means this transport is unavailable. There is no raw BLE fallback in this version.
-- Radio range, discovery time and interference depend on hardware and surroundings.
-- There is no internet uplink, rescuer dispatch service, authoritative rescue receipt, map download or end-to-end acknowledgement back to the origin.
-- Packet identities and relay paths are not cryptographically signed. Connected participants can read SOS details. Pairing codes authenticate a link, not a person's rescue credentials.
-- Local database is private to the app but not separately encrypted; allowBackup is false. Device-to-device migration behavior may vary by manufacturer; explicit extraction rules are a production follow-up.
-- No age-based expiry or pruning: packets persist until app data is cleared/uninstalled. TTL bounds hops, not wall-clock age. For this small demo, the full inbox is loaded into memory.
-- Clearing/reinstalling receiver data resets its anonymous identity. Losing its database while retaining identity can invalidate saved per-peer receipts on other devices; production needs inventory reconciliation.
-- Google Play services may collect SDK usage diagnostics under device settings; RESQMesh has no custom analytics. See Google's Nearby overview for details.
-- No phone networking or UI rendering was tested in the authoring environment.
-
-## Future improvements
-
-Foreground service with visible notification and battery controls; robust peer inventory reconciliation; signed messages and verified rescuer roles; encrypted-at-rest storage; payload quotas/rate limiting; user-controlled expiry and deletion; human-readable incident labels; live GPS with age/accuracy handling; Tamil UI; field-tested range/battery measurements; non-Google transport fallback; end-to-end delivery receipts.
-
-## Repository layout
-
-```text
-app/                  Android UI, controller, Nearby transport, SQLite and location
-core/                 Packet protocol and routing rules with JVM tests
-docs/                 Physical demo and verification record
-gradle/wrapper/       Standard Gradle wrapper and pinned distribution checksum
-.github/workflows/    Android build, tests and APK artifact
-```
+Developed as a prototype for **HackDay 1.0** under the theme **“TECH FOR A BETTER TOMORROW”**.
